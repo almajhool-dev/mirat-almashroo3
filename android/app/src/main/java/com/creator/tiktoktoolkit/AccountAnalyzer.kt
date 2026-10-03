@@ -228,7 +228,7 @@ private fun ScanProgress() {
     }
 }
 
-private data class SecurityCheck(val text: String, val problem: Boolean)
+private data class LegacySecurityCheck(val text: String, val problem: Boolean)
 
 private fun securityScore(p: TikTokProfile): Int {
     var score = 100
@@ -240,13 +240,13 @@ private fun securityScore(p: TikTokProfile): Int {
     return score.coerceIn(0, 100)
 }
 
-private fun securityChecks(p: TikTokProfile): List<SecurityCheck> {
-    val checks = mutableListOf<SecurityCheck>()
-    if (p.videos == 0L) checks += SecurityCheck("لا توجد منشورات عامة حالياً", true)
-    if (p.following > p.followers && p.following > 50L) checks += SecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
-    if (p.bio.isBlank()) checks += SecurityCheck("النبذة التعريفية فارغة", true)
-    if (p.avatarUrl.isBlank()) checks += SecurityCheck("صورة الحساب غير متاحة", true)
-    if (checks.isEmpty()) checks += SecurityCheck("لم تظهر مؤشرات مشكلة من البيانات العامة المتاحة", false)
+private fun securityChecks(p: TikTokProfile): List<LegacySecurityCheck> {
+    val checks = mutableListOf<LegacySecurityCheck>()
+    if (p.videos == 0L) checks += LegacySecurityCheck("لا توجد منشورات عامة حالياً", true)
+    if (p.following > p.followers && p.following > 50L) checks += LegacySecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
+    if (p.bio.isBlank()) checks += LegacySecurityCheck("النبذة التعريفية فارغة", true)
+    if (p.avatarUrl.isBlank()) checks += LegacySecurityCheck("صورة الحساب غير متاحة", true)
+    if (checks.isEmpty()) checks += LegacySecurityCheck("لم تظهر مؤشرات مشكلة من البيانات العامة المتاحة", false)
     return checks
 }
 
