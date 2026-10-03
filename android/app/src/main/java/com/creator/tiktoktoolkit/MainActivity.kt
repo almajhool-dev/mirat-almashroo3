@@ -1,9 +1,11 @@
 package com.creator.tiktoktoolkit
 
+import android.Manifest
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,4 +82,4 @@ object AppContext{lateinit var c:Context}
 @Composable fun Tele(){var x by remember{mutableStateOf("")};var size by remember{mutableFloatStateOf(30f)};LazyColumn(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("Teleprompter",style=MaterialTheme.typography.headlineSmall)};item{OutlinedTextField(x,{x=it},label={Text("السكربت")},minLines=7,modifier=Modifier.fillMaxWidth())};item{Text("حجم الخط: "+size.toInt());Slider(size,{size=it},valueRange=18f..54f)};item{Card{Text(if(x.isBlank())"ضع السكربت هنا…" else x,Modifier.padding(20.dp),fontSize=size.sp)}}}}
 @Composable fun Video(){var out by remember{mutableStateOf("")};val pick=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){u->if(u!=null)out=readVideo(u)};LazyColumn(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text("محلل الفيديو المحلي",style=MaterialTheme.typography.headlineSmall)};item{Button({pick.launch("video/*")}){Text("اختيار فيديو")}};item{Text(out)};item{Text("يتم تحليل الملف محلياً فقط؛ لا يتم رفع الفيديو.")}}}
 fun readVideo(u:Uri):String=try{MediaMetadataRetriever().run{setDataSource(AppContext.c,u);val d=extractMetadata(9);val w=extractMetadata(18);val h=extractMetadata(19);val b=extractMetadata(20);release();"المدة: "+((d?.toLongOrNull()?:0)/1000)+" ثانية\nالدقة: "+(w?:"?")+"×"+(h?:"?")+"\nBitrate: "+(b?:"غير متاح")}}catch(_:Exception){"تعذر قراءة بيانات الفيديو."}
-@Composable fun Schedule(){var title by remember{mutableStateOf("")};var min by remember{mutableStateOf("60")};val c=androidx.compose.ui.platform.LocalContext.current;Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text("جدول النشر",style=MaterialTheme.typography.headlineSmall);OutlinedTextField(title,{title=it},label={Text("عنوان الفيديو")},modifier=Modifier.fillMaxWidth());OutlinedTextField(min,{min=it},label={Text("بعد كم دقيقة؟")},modifier=Modifier.fillMaxWidth());Button({scheduleReminder(c,if(title.isBlank())"موعد نشر الفيديو" else title,min.toLongOrNull()?:60)}){Text("جدولة تذكير محلي")};Text("لا يتم النشر تلقائياً على TikTok.")}}
+@Composable fun Schedule(){var title by remember{mutableStateOf("")};var min by remember{mutableStateOf("60")};val c=androidx.compose.ui.platform.LocalContext.current;val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){};LaunchedEffect(Unit){if(Build.VERSION.SDK_INT>=33 && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=0) permission.launch(Manifest.permission.POST_NOTIFICATIONS)};Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text("جدول النشر",style=MaterialTheme.typography.headlineSmall);OutlinedTextField(title,{title=it},label={Text("عنوان الفيديو")},modifier=Modifier.fillMaxWidth());OutlinedTextField(min,{min=it},label={Text("بعد كم دقيقة؟")},modifier=Modifier.fillMaxWidth());Button({scheduleReminder(c,if(title.isBlank())"موعد نشر الفيديو" else title,min.toLongOrNull()?:60)}){Text("جدولة تذكير محلي")};Text("لا يتم النشر تلقائياً على TikTok.")}}
