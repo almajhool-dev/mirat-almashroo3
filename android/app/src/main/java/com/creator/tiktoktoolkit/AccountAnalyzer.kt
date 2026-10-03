@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,29 +44,70 @@ fun AccountAnalyzer() {
     var profile by remember { mutableStateOf<TikTokProfile?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("TikTok Account Analyzer", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-            Text("حلّل حساب TikTok عام بواسطة اليوزر", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Box(Modifier.fillMaxSize().background(Color(0xFF060D16))) {
+        Canvas(Modifier.fillMaxSize()) {
+            val step = 34.dp.toPx()
+            var x = 0f
+            while (x < size.width) {
+                drawLine(Color(0xFF00D9C0).copy(alpha = 0.055f), androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, size.height), 1f)
+                x += step
+            }
+            var y = 0f
+            while (y < size.height) {
+                drawLine(Color(0xFF00D9C0).copy(alpha = 0.055f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1f)
+                y += step
+            }
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp).padding(top = 58.dp, bottom = 38.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(Modifier.size(90.dp).clip(CircleShape).background(Color(0xFF103A42)), contentAlignment = Alignment.Center) {
+                Text("⬡", fontSize = 56.sp, color = Color(0xFF20F0D0), fontWeight = FontWeight.Bold)
+                Text("✓", fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            }
+            Text("CYBER • TIKTOK", fontSize = 25.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.ExtraBold)
+            Text("محلّل حسابات تيك توك", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFB5C7D0), fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it.replace("@", "").trim() },
                 label = { Text("اسم المستخدم") },
-                placeholder = { Text("مثال: username") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                placeholder = { Text("username") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
             )
             Button(
                 onClick = { profile = null; error = ""; loading = true; requestKey++ },
                 enabled = username.isNotBlank() && !loading,
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
-            ) { Text(if (loading) "جاري جلب البيانات..." else "تحليل الحساب") }
-        }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) { Text(if (loading) "جاري فحص الحساب..." else "فحص الحساب", fontWeight = FontWeight.Bold) }
+            if (loading) {
+                CircularProgressIndicator(Modifier.size(62.dp), color = Color(0xFF37F4D3), strokeWidth = 5.dp)
+                Text("جاري قراءة بيانات الحساب...", color = Color(0xFFB5C7D0))
+            }
             profile?.let { p ->
                 ProfileCard(p)
                 StatsCard(p)
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("مؤشر اكتمال الملف العام", fontWeight = FontWeight.Bold)
+                        val score = (if (p.avatarUrl.isNotBlank()) 25 else 0) +
+                            (if (p.bio.isNotBlank()) 25 else 0) +
+                            (if (p.videos > 0) 25 else 0) +
+                            (if (p.verified) 25 else 0)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(110.dp)) {
+                            CircularProgressIndicator(progress = { score / 100f }, modifier = Modifier.fillMaxSize(), color = Color(0xFF37F4D3), strokeWidth = 9.dp)
+                            Text("$"+"score%", fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Text("هذا مؤشر لاكتمال البيانات العامة وليس نسبة أمان الحساب أو فحصاً للحماية الداخلية.", fontSize = 12.sp, color = Color(0xFFB5C7D0))
+                    }
+                }
                 Button(
                     onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(p.profileUrl))) },
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
@@ -74,10 +118,8 @@ fun AccountAnalyzer() {
                     Text(error, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
-            Text(
-                "المحلّل يقرأ البيانات العامة التي يرسلها TikTok لصفحة الحساب. الحساب الخاص أو تغييرات TikTok أو الحظر المؤقت قد تمنع ظهور بعض البيانات.",
-                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("يعتمد الفحص على بيانات TikTok العامة. قد يمنع الحساب الخاص أو تقييد TikTok ظهور النتائج.", fontSize = 12.sp, color = Color(0xFFB5C7D0))
+            Text("تصميم وبرمجة: المجهول", fontSize = 13.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.Bold)
         }
         if (loading) {
             TikTokWebReader(username, requestKey) {
