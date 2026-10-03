@@ -41,20 +41,8 @@ fun AccountAnalyzer() {
     var profile by remember { mutableStateOf<TikTokProfile?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    Box(Modifier.fillMaxSize().background(Color(0xFF060D16))) {
-        Canvas(Modifier.fillMaxSize()) {
-            val step = 34.dp.toPx()
-            var x = 0f
-            while (x < size.width) {
-                drawLine(Color(0xFF00D9C0).copy(alpha = 0.055f), androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, size.height), 1f)
-                x += step
-            }
-            var y = 0f
-            while (y < size.height) {
-                drawLine(Color(0xFF00D9C0).copy(alpha = 0.055f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 1f)
-                y += step
-            }
-        }
+    Box(Modifier.fillMaxSize()) {
+        AnimatedCyberBackground()
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp).padding(top = 58.dp, bottom = 38.dp),
@@ -65,7 +53,7 @@ fun AccountAnalyzer() {
                 Text("⬡", fontSize = 56.sp, color = Color(0xFF20F0D0), fontWeight = FontWeight.Bold)
                 Text("✓", fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.Bold)
             }
-            Text("CYBER • TIKTOK", fontSize = 25.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.ExtraBold)
+            Text("TK_SABR", fontSize = 25.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.ExtraBold)
             Text("محلّل حسابات تيك توك", fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.ExtraBold)
             Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFD7E5EA), fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(8.dp))
@@ -111,6 +99,63 @@ fun AccountAnalyzer() {
                 else profile = it
             }
         }
+    }
+}
+
+@Composable
+private fun AnimatedCyberBackground() {
+    val transition = rememberInfiniteTransition(label = "background")
+    val drift by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 34f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gridDrift"
+    )
+    val pulse by transition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.28f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowPulse"
+    )
+    Canvas(Modifier.fillMaxSize()) {
+        drawRect(Color(0xFF03070C))
+        val step = 34.dp.toPx()
+        var x = -step + drift.dp.toPx()
+        while (x < size.width + step) {
+            drawLine(
+                Color(0xFF00D9C0).copy(alpha = 0.07f),
+                androidx.compose.ui.geometry.Offset(x, 0f),
+                androidx.compose.ui.geometry.Offset(x, size.height),
+                1f
+            )
+            x += step
+        }
+        var y = -step + drift.dp.toPx()
+        while (y < size.height + step) {
+            drawLine(
+                Color(0xFF00D9C0).copy(alpha = 0.07f),
+                androidx.compose.ui.geometry.Offset(0f, y),
+                androidx.compose.ui.geometry.Offset(size.width, y),
+                1f
+            )
+            y += step
+        }
+        drawCircle(
+            Color(0xFF00D9C0).copy(alpha = pulse),
+            radius = size.minDimension * 0.34f,
+            center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.18f)
+        )
+        drawCircle(
+            Color(0xFF7B5CFF).copy(alpha = pulse * 0.55f),
+            radius = size.minDimension * 0.28f,
+            center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, size.height * 0.82f)
+        )
     }
 }
 
