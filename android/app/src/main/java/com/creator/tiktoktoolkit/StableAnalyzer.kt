@@ -245,7 +245,7 @@ private fun StatsCard(p: TikTokProfile) {
 @Composable
 private fun Stat(label: String, value: Long) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(formatCount(value), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+        Text(stableFormat(value), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
         Text(label, color = Color(0xFFC5D0D4), fontSize = 10.sp)
     }
 }
