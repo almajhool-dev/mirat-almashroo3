@@ -1,1 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><application android:allowBackup="true" android:label="TikTok Creator Toolkit" android:supportsRtl="true" android:theme="@style/Theme.TikTokCreatorToolkit"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity><receiver android:name=".util.ReminderReceiver" android:exported="false"/></application></manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <application android:allowBackup="true" android:label="TikTok Creator Toolkit" android:supportsRtl="true" android:theme="@style/Theme.TikTokCreatorToolkit" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity>
+        <receiver android:name=".util.ReminderReceiver" android:exported="false"/>
+    </application>
+</manifest>
