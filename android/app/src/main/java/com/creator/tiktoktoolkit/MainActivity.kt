@@ -7,8 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,7 +23,8 @@ private const val WEB_CLIENT_ID = "205830966158-hrlf09nalsc90j1cd1ot5682udi199p8
 
 private fun isOwner(email: String?): Boolean {
     if (email.isNullOrBlank()) return false
-    val bytes = MessageDigest.getInstance("SHA-256").digest(email.lowercase().toByteArray())
+    val normalized = email.trim().lowercase()
+    val bytes = MessageDigest.getInstance("SHA-256").digest(normalized.toByteArray())
     return bytes.joinToString("") { "%02x".format(it) } == OWNER_EMAIL_SHA256
 }
 
@@ -32,10 +34,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 val repository = remember { LocalAdminRepository() }
-                var adminOpen by remember { mutableStateOf(false) }
-                var ownerVerified by remember { mutableStateOf(isOwner(GoogleSignIn.getLastSignedInAccount(this)?.email)) }
-                var secretTapCount by remember { mutableIntStateOf(0) }
-
                 val gso = remember {
                     GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                         .requestEmail()
@@ -43,38 +41,39 @@ class MainActivity : ComponentActivity() {
                         .build()
                 }
                 val googleClient = remember { GoogleSignIn.getClient(this, gso) }
+                var ownerVerified by remember { mutableStateOf(false) }
+                var checkedAccount by remember { mutableStateOf(false) }
+                var loginStarted by remember { mutableStateOf(false) }
+
                 val signInLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                    checkedAccount = true
+                    loginStarted = true
                     if (result.resultCode == Activity.RESULT_OK) {
                         runCatching { GoogleSignIn.getSignedInAccountFromIntent(result.data).result }
-                            .onSuccess { account ->
-                                ownerVerified = isOwner(account.email)
-                                adminOpen = ownerVerified
-                            }
+                            .onSuccess { ownerVerified = isOwner(it.email) }
+                            .onFailure { ownerVerified = false }
                     }
                 }
 
-                LaunchedEffect(ownerVerified) {
-                    if (ownerVerified) adminOpen = true
+                LaunchedEffect(Unit) {
+                    val lastAccount = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                    ownerVerified = isOwner(lastAccount?.email)
+                    checkedAccount = true
+                    if (!ownerVerified && !loginStarted) {
+                        loginStarted = true
+                        signInLauncher.launch(googleClient.signInIntent)
+                    }
                 }
 
-                if (adminOpen && ownerVerified) {
-                    AdminControlPanel(repository = repository, onClose = { adminOpen = false })
-                } else {
-                    Box(Modifier.fillMaxSize()) {
+                when {
+                    ownerVerified -> AdminControlPanel(repository = repository, onClose = {})
+                    !checkedAccount -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("جاري التحقق من حساب المدير…") }
+                    else -> Box(Modifier.fillMaxSize()) {
                         StableAccountAnalyzer()
-                        Box(
-                            Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(64.dp)
-                                .clickable {
-                                    secretTapCount++
-                                    if (secretTapCount >= 5) {
-                                        secretTapCount = 0
-                                        if (ownerVerified) adminOpen = true
-                                        else signInLauncher.launch(googleClient.signInIntent)
-                                    }
-                                }
-                        )
+                        Button(
+                            onClick = { signInLauncher.launch(googleClient.signInIntent) },
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(18.dp)
+                        ) { Text("تسجيل دخول المدير") }
                     }
                 }
             }
