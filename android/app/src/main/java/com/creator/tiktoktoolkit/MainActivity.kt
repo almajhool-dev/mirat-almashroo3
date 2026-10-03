@@ -17,7 +17,7 @@ import com.creator.tiktoktoolkit.ui.AppTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 
-private const val OWNER_EMAIL_SHA256 = "16538c1b0bbe8cf0002acdb02015caf5dbf5afdb9835003652aee8abad88c26b"
+private const val OWNER_EMAIL_SHA256 = "26229eb3b872e1ec9197ef6939ae28e82d945c7c8c741eeb6c3e01349f5164e7"
 private const val WEB_CLIENT_ID = "205830966158-hrlf09nalsc90j1cd1ot5682udi199p8.apps.googleusercontent.com"
 
 private fun isOwner(email: String?): Boolean {
@@ -51,6 +51,10 @@ class MainActivity : ComponentActivity() {
                                 adminOpen = ownerVerified
                             }
                     }
+                }
+
+                LaunchedEffect(ownerVerified) {
+                    if (ownerVerified) adminOpen = true
                 }
 
                 if (adminOpen && ownerVerified) {
