@@ -41,8 +41,8 @@ fun AccountAnalyzer() {
     var profile by remember { mutableStateOf<TikTokProfile?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("TikTok Account Analyzer", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
             Text("حلّل حساب TikTok عام بواسطة اليوزر", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
@@ -60,10 +60,7 @@ fun AccountAnalyzer() {
             ) { Text(if (loading) "جاري جلب البيانات..." else "تحليل الحساب") }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             profile?.let { p ->
                 ProfileCard(p)
                 StatsCard(p)
@@ -82,10 +79,12 @@ fun AccountAnalyzer() {
                 fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        TikTokWebReader(username, requestKey) {
-            loading = false
-            if (it == null) error = "تعذر قراءة بيانات الحساب. تأكد من اليوزر وأن الحساب عام."
-            else profile = it
+        if (loading) {
+            TikTokWebReader(username, requestKey) {
+                loading = false
+                if (it == null) error = "تعذر قراءة بيانات الحساب. تأكد من اليوزر وأن الحساب عام."
+                else profile = it
+            }
         }
     }
 }
