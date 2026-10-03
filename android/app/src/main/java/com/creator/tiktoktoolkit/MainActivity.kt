@@ -19,7 +19,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 
 private const val OWNER_EMAIL_SHA256 = "26229eb3b872e1ec9197ef6939ae28e82d945c7c8c741eeb6c3e01349f5164e7"
-private const val WEB_CLIENT_ID = "205830966158-hrlf09nalsc90j1cd1ot5682udi199p8.apps.googleusercontent.com"
 
 private fun isOwner(email: String?): Boolean {
     if (email.isNullOrBlank()) return false
@@ -37,7 +36,6 @@ class MainActivity : ComponentActivity() {
                 val gso = remember {
                     GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                         .requestEmail()
-                        .requestIdToken(WEB_CLIENT_ID)
                         .build()
                 }
                 val googleClient = remember { GoogleSignIn.getClient(this, gso) }
@@ -52,6 +50,8 @@ class MainActivity : ComponentActivity() {
                         runCatching { GoogleSignIn.getSignedInAccountFromIntent(result.data).result }
                             .onSuccess { ownerVerified = isOwner(it.email) }
                             .onFailure { ownerVerified = false }
+                    } else {
+                        ownerVerified = false
                     }
                 }
 
@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity() {
 
                 when {
                     ownerVerified -> AdminControlPanel(repository = repository, onClose = {})
-                    !checkedAccount -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("جاري التحقق من حساب المدير…") }
+                    !checkedAccount -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("جاري التحقق من حساب المدير…")
+                    }
                     else -> Box(Modifier.fillMaxSize()) {
                         StableAccountAnalyzer()
                         Button(
