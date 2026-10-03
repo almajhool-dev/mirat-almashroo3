@@ -264,12 +264,12 @@ private fun securityScore(p: TikTokProfile): Int {
 }
 
 private fun securityChecks(p: TikTokProfile): List<StableSecurityCheck> {
-    val checks = mutableListOf<SecurityCheck>()
+    val checks = mutableListOf<StableSecurityCheck>()
     if (p.videos == 0L) checks += StableSecurityCheck("لا توجد منشورات عامة حالياً", true)
-    if (p.bio.isBlank()) checks += SecurityCheck("النبذة التعريفية فارغة", true)
-    if (p.avatarUrl.isBlank()) checks += SecurityCheck("صورة الحساب غير متاحة", true)
-    if (p.following > p.followers && p.following > 50L) checks += SecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
-    if (checks.isEmpty()) checks += SecurityCheck("لم تظهر مؤشرات مشكلة من البيانات العامة المتاحة", false)
+    if (p.bio.isBlank()) checks += StableSecurityCheck("النبذة التعريفية فارغة", true)
+    if (p.avatarUrl.isBlank()) checks += StableSecurityCheck("صورة الحساب غير متاحة", true)
+    if (p.following > p.followers && p.following > 50L) checks += StableSecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
+    if (checks.isEmpty()) checks += StableSecurityCheck("لم تظهر مؤشرات مشكلة من البيانات العامة المتاحة", false)
     return checks
 }
 
