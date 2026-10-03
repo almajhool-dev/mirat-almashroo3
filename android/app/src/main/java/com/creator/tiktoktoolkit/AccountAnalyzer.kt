@@ -214,7 +214,7 @@ private fun TikTokWebReader(username: String, requestKey: Int, onResult: (TikTok
                         """.trimIndent()
                         view?.evaluateJavascript(js) { raw ->
                             try {
-                                val clean = raw.trim().removePrefix(""").removeSuffix(""").replace("\"", """).replace("\\", "\")
+                                val clean = raw.trim().removePrefix("\"").removeSuffix("\"").replace("\\\"", "\"").replace("\\\\", "\\")
                                 val json = JSONObject(clean)
                                 if (json.has("error")) callback(null)
                                 else callback(TikTokProfile(
