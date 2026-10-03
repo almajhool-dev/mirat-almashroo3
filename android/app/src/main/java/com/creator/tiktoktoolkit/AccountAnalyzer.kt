@@ -50,13 +50,14 @@ fun AccountAnalyzer() {
         AnimatedCyberBackground()
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp).padding(top = 30.dp, bottom = 38.dp),
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 38.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 Modifier
-                    .size(154.dp)
+                    .size(150.dp)
                     .clip(CircleShape)
                     .border(2.dp, Color(0xFF20F0D0), CircleShape)
             ) {
@@ -166,14 +167,14 @@ private fun AnimatedCyberBackground() {
                     translationY = driftY
                     scaleX = 1.08f
                     scaleY = 1.08f
-                    alpha = 0.72f
+                    alpha = 0.94f
                 },
             contentScale = ContentScale.Crop
         )
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.38f))
+                .background(Color.Black.copy(alpha = 0.16f))
         )
     }
 }
