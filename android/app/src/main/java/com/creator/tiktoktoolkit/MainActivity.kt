@@ -55,7 +55,7 @@ object AppContext{lateinit var c:Context}
 private data class NavItem(val route:String,val label:String,val icon:String)
 private val navItems=listOf(
     NavItem("home","الرئيسية","⌂"),NavItem("ideas","الأفكار","✦"),
-    NavItem("content","المحتوى","▣"),NavItem("stats","الإحصائيات","◔")
+    NavItem("content","المحتوى","▣"),NavItem("stats","الإحصائيات","◔"),NavItem("analyzer","تحليل حساب","◎")
 )
 
 @Composable fun CreatorApp(vm:CreatorVM){
@@ -77,7 +77,7 @@ private val navItems=listOf(
             }
         ){p->
             NavHost(nav,"home",Modifier.padding(p),enterTransition={fadeIn()},exitTransition={fadeOut()}){
-                composable("home"){Home(nav,dark){dark=!dark}}
+                composable("home"){Home(nav,dark){dark=!dark}};composable("analyzer"){AccountAnalyzer()}
                 composable("ideas"){Ideas()};composable("content"){Content(vm)};composable("stats"){StatsPage(vm)}
                 composable("hooks"){Gen("مولّد Hooks",listOf("توقف! لازم تشوف هذا قبل ما تسوي سكرول.","3 أشياء تمنع فيديوك من جذب الانتباه."))}
                 composable("captions"){Gen("مولّد Captions",listOf("فكرة بسيطة، تنفيذ أقوى. شنو رأيك؟","إذا وصلت لهنا، هذا الفيديو إلك 😄"))}
@@ -120,7 +120,7 @@ private val navItems=listOf(
             val tools=listOf(
                 "✦" to ("أفكار المحتوى" to "ideas"),"⚡" to ("Hooks" to "hooks"),
                 "✎" to ("Captions" to "captions"),"#" to ("Hashtags" to "hashtags"),
-                "▶" to ("تحليل الفيديو" to "video"),"▤" to ("Teleprompter" to "tele"),
+                "◎" to ("تحليل حساب" to "analyzer"),"▶" to ("تحليل الفيديو" to "video"),"▤" to ("Teleprompter" to "tele"),
                 "◷" to ("جدول النشر" to "schedule")
             )
             Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
