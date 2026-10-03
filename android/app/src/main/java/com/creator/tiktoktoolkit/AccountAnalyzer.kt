@@ -326,7 +326,28 @@ private fun TikTokWebReader(username: String, requestKey: Int, onResult: (TikTok
                 settings.domStorageEnabled = true
                 settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36"
                 webChromeClient = WebChromeClient()
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                 webViewClient = object : WebViewClient() {
+                    override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                        // Keep the app alive if TikTok crashes the WebView renderer.
+                        try {
+                            view.stopLoading()
+                            view.removeAllViews()
+                            view.destroy()
+                        } catch (_: Exception) {}
+                        callback(null)
+                        return true
+                    }
+
+                    override fun onReceivedError(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?,
+                        error: android.webkit.WebResourceError?
+                    ) {
+                        super.onReceivedError(view, request, error)
+                        if (request?.isForMainFrame == true) callback(null)
+                    }
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         if (requestKey <= 0 || username.isBlank()) return
