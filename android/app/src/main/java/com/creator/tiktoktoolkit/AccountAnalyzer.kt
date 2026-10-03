@@ -1,12 +1,7 @@
 package com.creator.tiktoktoolkit
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
-import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,7 +20,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
 import java.util.Locale
 
@@ -313,101 +307,99 @@ private fun formatCount(value: Long): String = when {
     else -> value.toString()
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun TikTokWebReader(username: String, requestKey: Int, onResult: (TikTokProfile?) -> Unit) {
     val callback by rememberUpdatedState(onResult)
-    AndroidView(
-        modifier = Modifier.size(1.dp),
-        factory = { context ->
-            WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(1, 1)
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36"
-                webChromeClient = WebChromeClient()
-                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-                webViewClient = object : WebViewClient() {
-                    override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
-                        // Keep the app alive if TikTok crashes the WebView renderer.
-                        try {
-                            view.stopLoading()
-                            view.removeAllViews()
-                            view.destroy()
-                        } catch (_: Exception) {}
-                        callback(null)
-                        return true
-                    }
 
-                    override fun onReceivedError(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?,
-                        error: android.webkit.WebResourceError?
-                    ) {
-                        super.onReceivedError(view, request, error)
-                        if (request?.isForMainFrame == true) callback(null)
-                    }
+    LaunchedEffect(requestKey, username) {
+        if (requestKey <= 0 || username.isBlank()) return@LaunchedEffect
 
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        if (requestKey <= 0 || username.isBlank()) return
-                        val js = """
-                            (function(){
-                              try {
-                                var el=document.getElementById('__UNIVERSAL_DATA_FOR_REHYDRATION__');
-                                if(!el) return JSON.stringify({error:'no_data'});
-                                var root=JSON.parse(el.textContent), found=null;
-                                function walk(o){
-                                  if(found||o===null||typeof o!=='object') return;
-                                  if(o.userInfo && (o.userInfo.stats || o.userInfo.user)){found=o.userInfo;return;}
-                                  if(Array.isArray(o)){for(var i=0;i<o.length&&!found;i++)walk(o[i]);}
-                                  else {for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k))walk(o[k]);}}
-                                }
-                                walk(root);
-                                if(!found) return JSON.stringify({error:'profile_not_found'});
-                                var u=found.user||{}, s=found.stats||{};
-                                return JSON.stringify({
-                                  username:u.uniqueId||'""" + username + """',
-                                  displayName:u.nickname||'', bio:u.signature||'',
-                                  avatarUrl:u.avatarLarger||u.avatarMedium||u.avatarThumb||'',
-                                  profileUrl:'https://www.tiktok.com/@'+(u.uniqueId||'""" + username + """'),
-                                  followers:Number(s.followerCount||0), following:Number(s.followingCount||0),
-                                  likes:Number(s.heartCount||0), videos:Number(s.videoCount||0),
-                                  verified:Boolean(u.verified)
-                                });
-                              } catch(e){return JSON.stringify({error:String(e)});}
-                            })();
-                        """.trimIndent()
-                        view?.evaluateJavascript(js) { raw ->
-                            try {
-                                val clean = raw.trim().removePrefix("\"").removeSuffix("\"").replace("\\\"", "\"").replace("\\\\", "\\")
-                                val json = JSONObject(clean)
-                                if (json.has("error")) callback(null)
-                                else callback(TikTokProfile(
-                                    json.optString("username", username),
-                                    json.optString("displayName"),
-                                    json.optString("bio"),
-                                    json.optString("avatarUrl"),
-                                    json.optString("profileUrl", "https://www.tiktok.com/@" + username),
-                                    json.optLong("followers"), json.optLong("following"),
-                                    json.optLong("likes"), json.optLong("videos"),
-                                    json.optBoolean("verified")
-                                ))
-                            } catch (_: Exception) { callback(null) }
-                        }
-                    }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val result = try {
+                val url = java.net.URL("https://www.tiktok.com/@" + username)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 12000
+                    readTimeout = 15000
+                    instanceFollowRedirects = true
+                    setRequestProperty(
+                        "User-Agent",
+                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36"
+                    )
+                    setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+                    setRequestProperty("Accept-Encoding", "identity")
                 }
+
+                connection.connect()
+                val code = connection.responseCode
+                if (code !in 200..399) {
+                    connection.disconnect()
+                    null
+                } else {
+                    val html = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                    connection.disconnect()
+                    parseTikTokHtml(html, username)
+                }
+            } catch (_: Throwable) {
+                null
             }
-        },
-        update = { web ->
-            if (requestKey > 0 && username.isNotBlank()) {
-                val currentKey = web.getTag(android.R.id.content) as? Int
-                if (currentKey != requestKey) {
-                    web.setTag(android.R.id.content, requestKey)
-                    web.stopLoading()
-                    web.loadUrl("https://www.tiktok.com/@" + username)
-                }
+
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                callback(result)
             }
         }
-    )
+    }
+}
+
+private fun parseTikTokHtml(html: String, fallbackUsername: String): TikTokProfile? {
+    return try {
+        val scriptRegex = Regex(
+            """<script[^>]+id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>(.*?)</script>""",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+        )
+        val match = scriptRegex.find(html) ?: return null
+        val root = JSONObject(match.groupValues[1])
+        val info = findUserInfo(root, 0) ?: return null
+        val user = info.optJSONObject("user") ?: return null
+        val stats = info.optJSONObject("stats") ?: JSONObject()
+
+        val uniqueId = user.optString("uniqueId").ifBlank { fallbackUsername }
+        TikTokProfile(
+            username = uniqueId,
+            displayName = user.optString("nickname"),
+            bio = user.optString("signature"),
+            avatarUrl = user.optString("avatarLarger")
+                .ifBlank { user.optString("avatarMedium") }
+                .ifBlank { user.optString("avatarThumb") },
+            profileUrl = "https://www.tiktok.com/@" + uniqueId,
+            followers = stats.optLong("followerCount", 0L),
+            following = stats.optLong("followingCount", 0L),
+            likes = stats.optLong("heartCount", 0L),
+            videos = stats.optLong("videoCount", 0L),
+            verified = user.optBoolean("verified", false)
+        )
+    } catch (_: Throwable) {
+        null
+    }
+}
+
+private fun findUserInfo(value: Any?, depth: Int): JSONObject? {
+    if (value == null || depth > 12) return null
+
+    if (value is JSONObject) {
+        val direct = value.optJSONObject("userInfo")
+        if (direct != null && (direct.has("user") || direct.has("stats"))) return direct
+
+        val keys = value.keys()
+        while (keys.hasNext()) {
+            val found = findUserInfo(value.opt(keys.next()), depth + 1)
+            if (found != null) return found
+        }
+    } else if (value is org.json.JSONArray) {
+        for (i in 0 until value.length()) {
+            val found = findUserInfo(value.opt(i), depth + 1)
+            if (found != null) return found
+        }
+    }
+    return null
 }
