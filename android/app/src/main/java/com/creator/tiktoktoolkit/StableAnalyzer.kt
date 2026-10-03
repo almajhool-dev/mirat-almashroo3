@@ -1,6 +1,8 @@
 package com.creator.tiktoktoolkit
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -17,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
@@ -35,6 +39,7 @@ import java.util.Locale
 @Composable
 fun StableAccountAnalyzer() {
     var username by remember { mutableStateOf("") }
+    var requestKey by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var profile by remember { mutableStateOf<TikTokProfile?>(null) }
     var error by remember { mutableStateOf("") }
@@ -44,75 +49,76 @@ fun StableAccountAnalyzer() {
         StableAnimatedBackground()
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 22.dp).padding(bottom = 32.dp),
+                .padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(Modifier.size(150.dp).clip(CircleShape).border(2.dp, Color(0xFF20F0D0), CircleShape)) {
+            Box(Modifier.size(124.dp).clip(CircleShape).border(2.dp, Color(0xFF20F0D0), CircleShape)) {
                 Image(painterResource(R.drawable.tk_sabr_logo_vector), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
-            Text("TK_SABR", color = Color(0xFF22E6D0), fontSize = 34.sp, fontWeight = FontWeight.Black)
-            Text("محلّل حسابات تيك توك", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
-            Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFDCE7EA), fontSize = 15.sp)
+            Text("TK_SABR", color = Color(0xFF22E6D0), fontSize = 31.sp, fontWeight = FontWeight.Black)
+            Text("محلّل حسابات تيك توك", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFDCE7EA), fontSize = 14.sp)
 
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it.replace("@", "").trim() },
+                onValueChange = { username = it.replace("@", "").trim(); error = "" },
                 label = { Text("اسم المستخدم") },
-                singleLine = true, enabled = !loading,
+                singleLine = true,
+                enabled = !loading,
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 shape = RoundedCornerShape(22.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF20F0D0), unfocusedBorderColor = Color(0xFF20F0D0),
                     focusedLabelColor = Color(0xFF20F0D0), unfocusedLabelColor = Color(0xFFDCE7EA),
-                    cursorColor = Color(0xFF20F0D0)
+                    cursorColor = Color(0xFF20F0D0), focusedTextColor = Color.White, unfocusedTextColor = Color.White
                 )
             )
+
             Button(
-                onClick = { loading = true; error = ""; profile = null },
+                onClick = { profile = null; error = ""; loading = true; requestKey++ },
                 enabled = username.isNotBlank() && !loading,
                 modifier = Modifier.fillMaxWidth().height(60.dp),
                 shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF18DED0), contentColor = Color(0xFF031014))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF18DED0), contentColor = Color(0xFF031014),
+                    disabledContainerColor = Color(0xFF18DED0).copy(alpha = .45f)
+                )
             ) {
-                Text(if (loading) "جاري الفحص..." else "فحص الحساب  ⌕", fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(if (loading) "جاري فحص الحساب..." else "فحص الحساب  ⌕", fontSize = 18.sp, fontWeight = FontWeight.Black)
             }
 
             if (loading) {
-                StableScanner()
-                LaunchedEffect(username) {
+                ScanProgress()
+                LaunchedEffect(requestKey) {
                     val result = readPublicTikTok(username)
                     profile = result
                     loading = false
-                    if (result == null) error = "تعذر قراءة بيانات الحساب. تأكد من اليوزر وأن الحساب عام."
+                    if (result == null) error = "تعذر قراءة بيانات الحساب. تأكد من اسم المستخدم وأن الحساب عام."
                 }
             }
 
             profile?.let { p ->
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(p.displayName.ifBlank { "@${p.username}" }, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("@${p.username}", color = Color(0xFF13CDBF), fontWeight = FontWeight.Bold)
-                        if (p.verified) Text("✓ موثّق", color = Color(0xFF20F0D0), fontWeight = FontWeight.Bold)
-                        if (p.bio.isNotBlank()) Text(p.bio, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                        Text("إحصائيات الحساب", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            StableStat("المتابعون", p.followers); StableStat("المتابَعون", p.following)
-                            StableStat("الإعجابات", p.likes); StableStat("الفيديوهات", p.videos)
-                        }
-                    }
-                }
+                ProfileCard(p)
+                StatsCard(p)
+                SecurityCard(p)
                 Button(
                     onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(p.profileUrl))) },
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)
-                ) { Text("فتح البروفايل في TikTok") }
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4B91), contentColor = Color(0xFF160812))
+                ) {
+                    Text("فتح البروفايل في TikTok", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                }
             }
-            if (error.isNotBlank()) Text(error, color = Color(0xFFFF9AAA), modifier = Modifier.fillMaxWidth())
-            Text("يعتمد الفحص على بيانات TikTok العامة فقط.", fontSize = 12.sp, color = Color(0xFFB5C7D0))
+
+            if (error.isNotBlank()) {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF351923)), shape = RoundedCornerShape(16.dp)) {
+                    Text(error, Modifier.padding(16.dp), color = Color(0xFFFFA5B5), fontSize = 14.sp)
+                }
+            }
+
+            Text("يعتمد الفحص على بيانات TikTok العامة فقط. الحساب الخاص أو تقييد TikTok قد يمنع ظهور بعض النتائج.", fontSize = 12.sp, color = Color(0xFFB5C7D0))
             Text("تصميم وبرمجة: المجهول", fontSize = 13.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.Bold)
         }
     }
@@ -121,30 +127,196 @@ fun StableAccountAnalyzer() {
 @Composable
 private fun StableAnimatedBackground() {
     val transition = rememberInfiniteTransition(label = "stable_bg")
-    val x by transition.animateFloat(-20f, 20f, infiniteRepeatable(tween(7000), RepeatMode.Reverse), label = "x")
-    val y by transition.animateFloat(-12f, 12f, infiniteRepeatable(tween(9000), RepeatMode.Reverse), label = "y")
-    Canvas(Modifier.fillMaxSize().background(Color.Black)) {
-        val center = androidx.compose.ui.geometry.Offset(size.width * .52f + x, size.height * .40f + y)
-        drawRect(Brush.radialGradient(listOf(Color(0xFF063A3A), Color(0xFF02090B), Color.Black), center = center, radius = size.maxDimension * .85f))
-        drawCircle(Color(0xFF11DCCB).copy(alpha = .055f), size.minDimension * .38f,
-            androidx.compose.ui.geometry.Offset(size.width * .16f - x, size.height * .78f - y))
+    val x by transition.animateFloat(-18f, 18f, infiniteRepeatable(tween(8500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "x")
+    val y by transition.animateFloat(-12f, 12f, infiniteRepeatable(tween(10500, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "y")
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        Image(
+            painterResource(R.drawable.tk_background), null,
+            Modifier.fillMaxSize().graphicsLayer {
+                translationX = x
+                translationY = y
+                scaleX = 1.07f
+                scaleY = 1.07f
+                alpha = .96f
+            },
+            contentScale = ContentScale.Crop
+        )
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .18f)))
+        Canvas(Modifier.fillMaxSize()) {
+            drawRect(
+                Brush.radialGradient(
+                    listOf(Color(0xFF0B5A58).copy(alpha = .22f), Color.Transparent),
+                    center = androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * .4f),
+                    radius = size.maxDimension * .75f
+                )
+            )
+        }
     }
 }
 
 @Composable
-private fun StableScanner() {
-    CircularProgressIndicator(
-        progress = { .72f }, modifier = Modifier.padding(12.dp).size(68.dp),
-        color = Color(0xFF37F4D3), trackColor = Color(0xFF20323A),
-        strokeWidth = 6.dp, strokeCap = StrokeCap.Round
-    )
+private fun ScanProgress() {
+    val transition = rememberInfiniteTransition(label = "scan")
+    val rotation by transition.animateFloat(0f, 360f, infiniteRepeatable(tween(1050, easing = LinearEasing), RepeatMode.Restart), label = "rotation")
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xE6091720))) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Box(Modifier.size(106.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val r = size.minDimension / 2f - 8.dp.toPx()
+                    drawCircle(Color(0xFF17323B), r)
+                    drawArc(Color(0xFF37F4D3), rotation, 285f, false, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                    drawArc(Color.White.copy(alpha = .8f), rotation + 290f, 35f, false, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+                }
+                Text("SCAN", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            }
+            Text("جاري تحليل الحساب", color = Color(0xFF37F4D3), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text("يتم جلب الصورة والإحصائيات والبيانات العامة...", color = Color(0xFFD7E5EA), fontSize = 12.sp)
+        }
+    }
 }
 
 @Composable
-private fun StableStat(label: String, value: Long) {
+private fun ProfileCard(p: TikTokProfile) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xE62F2D34))) {
+        Column(
+            Modifier.fillMaxWidth().padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Avatar(p.avatarUrl)
+            Text(p.displayName.ifBlank { "@" + p.username }, fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.ExtraBold)
+            Text("@" + p.username, color = Color(0xFF20E6D0), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            if (p.verified) {
+                Surface(shape = RoundedCornerShape(50), color = Color(0xFF103C3B)) {
+                    Text("✓ موثّق", Modifier.padding(horizontal = 12.dp, vertical = 5.dp), color = Color(0xFF37F4D3), fontWeight = FontWeight.Bold)
+                }
+            }
+            if (p.bio.isNotBlank()) Text(p.bio, Modifier.padding(top = 5.dp), color = Color(0xFFDCE4E7), fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun Avatar(url: String) {
+    var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(url) {
+        bitmap = if (url.isBlank()) null else withContext(Dispatchers.IO) {
+            try {
+                val c = URL(url).openConnection().apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36")
+                }
+                c.getInputStream().use { BitmapFactory.decodeStream(it) }
+            } catch (_: Throwable) { null }
+        }
+    }
+    Box(
+        Modifier.size(100.dp).clip(CircleShape).border(2.dp, Color(0xFF20F0D0), CircleShape).background(Color(0xFF10181B)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            Image(bitmap!!.asImageBitmap(), "صورة الحساب", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Image(painterResource(R.drawable.tk_sabr_logo_vector), null, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Crop)
+        }
+    }
+}
+
+@Composable
+private fun StatsCard(p: TikTokProfile) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xE62F2D34))) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            Text("إحصائيات الحساب", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Stat("المتابعون", p.followers)
+                Stat("المتابَعون", p.following)
+                Stat("الإعجابات", p.likes)
+                Stat("الفيديوهات", p.videos)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Stat(label: String, value: Long) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stableFormat(value), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(formatCount(value), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, color = Color(0xFFC5D0D4), fontSize = 10.sp)
+    }
+}
+
+private data class SecurityCheck(val text: String, val problem: Boolean)
+
+private fun securityScore(p: TikTokProfile): Int {
+    var score = 100
+    if (p.videos == 0L) score -= 30
+    if (p.bio.isBlank()) score -= 10
+    if (p.avatarUrl.isBlank()) score -= 10
+    if (p.following > p.followers && p.following > 50L) score -= 15
+    if (p.followers > 0L && p.following >= p.followers * 3L) score -= 15
+    return score.coerceIn(0, 100)
+}
+
+private fun securityChecks(p: TikTokProfile): List<SecurityCheck> {
+    val checks = mutableListOf<SecurityCheck>()
+    if (p.videos == 0L) checks += SecurityCheck("لا توجد منشورات عامة حالياً", true)
+    if (p.bio.isBlank()) checks += SecurityCheck("النبذة التعريفية فارغة", true)
+    if (p.avatarUrl.isBlank()) checks += SecurityCheck("صورة الحساب غير متاحة", true)
+    if (p.following > p.followers && p.following > 50L) checks += SecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
+    if (checks.isEmpty()) checks += SecurityCheck("لم تظهر مؤشرات مشكلة من البيانات العامة المتاحة", false)
+    return checks
+}
+
+@Composable
+private fun SecurityCard(p: TikTokProfile) {
+    val score = securityScore(p)
+    val checks = securityChecks(p)
+    val scoreColor = when {
+        score >= 70 -> Color(0xFF37F4D3)
+        score >= 40 -> Color(0xFFFFC857)
+        else -> Color(0xFFFF667A)
+    }
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xE62F2D34))) {
+        Column(
+            Modifier.fillMaxWidth().padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text("نسبة أمان الحساب", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+            Box(Modifier.size(122.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { score / 100f },
+                    modifier = Modifier.fillMaxSize(),
+                    color = scoreColor,
+                    trackColor = Color(0xFF20323A),
+                    strokeWidth = 10.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                Text("$score%", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
+            }
+            Text("مؤشر تقديري من إشارات الحساب العامة فقط، وليس فحصاً داخلياً لأمان TikTok.", color = Color(0xFFB8CBD2), fontSize = 11.sp)
+            HorizontalDivider(color = Color(0xFF26363D))
+            Text("المشاكل الظاهرة", Modifier.fillMaxWidth(), color = Color.White, fontWeight = FontWeight.Bold)
+            checks.forEach { check ->
+                Row(
+                    Modifier.fillMaxWidth().background(
+                        if (check.problem) Color(0xFF3A1C25) else Color(0xFF102C27),
+                        RoundedCornerShape(13.dp)
+                    ).padding(11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(if (check.problem) "⚠" else "✓", color = if (check.problem) Color(0xFFFF8A9A) else Color(0xFF37F4D3), fontSize = 17.sp)
+                    Spacer(Modifier.width(9.dp))
+                    Text(check.text, color = Color(0xFFE5EEF1), fontSize = 12.sp)
+                }
+            }
+            Text("حالة الحظر أو المخالفات الداخلية لا يمكن تأكيدها من صفحة الحساب العامة.", color = Color(0xFF8FA6AF), fontSize = 10.sp)
+        }
     }
 }
 
