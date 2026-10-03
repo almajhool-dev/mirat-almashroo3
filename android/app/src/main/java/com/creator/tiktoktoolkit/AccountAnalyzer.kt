@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,11 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import org.json.JSONObject
 import java.util.Locale
 
@@ -45,33 +50,60 @@ fun AccountAnalyzer() {
         AnimatedCyberBackground()
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp).padding(top = 58.dp, bottom = 38.dp),
+                .padding(horizontal = 20.dp).padding(top = 30.dp, bottom = 38.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(Modifier.size(90.dp).clip(CircleShape).background(Color(0xFF103A42)), contentAlignment = Alignment.Center) {
-                Text("⬡", fontSize = 56.sp, color = Color(0xFF20F0D0), fontWeight = FontWeight.Bold)
-                Text("✓", fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Box(
+                Modifier
+                    .size(154.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color(0xFF20F0D0), CircleShape)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.tk_sabr_logo),
+                    contentDescription = "TK_SABR",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
-            Text("TK_SABR", fontSize = 25.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.ExtraBold)
-            Text("محلّل حسابات تيك توك", fontSize = 23.sp, color = Color.White, fontWeight = FontWeight.ExtraBold)
-            Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFD7E5EA), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.height(8.dp))
+            Text("TK_SABR", fontSize = 34.sp, color = Color(0xFF22E6D0), fontWeight = FontWeight.Black)
+            Text("محلّل حسابات تيك توك", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "اكتب اسم المستخدم لفحص بيانات الحساب العامة",
+                color = Color(0xFFDCE7EA),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it.replace("@", "").trim() },
                 label = { Text("اسم المستخدم") },
-                placeholder = { Text("username") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                shape = RoundedCornerShape(22.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF20F0D0),
+                    unfocusedBorderColor = Color(0xFF20F0D0),
+                    focusedLabelColor = Color(0xFF20F0D0),
+                    unfocusedLabelColor = Color(0xFFDCE7EA),
+                    cursorColor = Color(0xFF20F0D0)
+                )
             )
             Button(
                 onClick = { profile = null; error = ""; loading = true; requestKey++ },
                 enabled = username.isNotBlank() && !loading,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) { Text(if (loading) "جاري فحص الحساب..." else "فحص الحساب", fontWeight = FontWeight.Bold) }
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF18DED0),
+                    contentColor = Color(0xFF031014),
+                    disabledContainerColor = Color(0xFF18DED0).copy(alpha = 0.45f)
+                )
+            ) {
+                Text(if (loading) "جاري فحص الحساب..." else "فحص الحساب  ⌕", fontSize = 18.sp, fontWeight = FontWeight.Black)
+            }
             if (loading) {
                 ScanProgress()
             }
@@ -104,57 +136,44 @@ fun AccountAnalyzer() {
 
 @Composable
 private fun AnimatedCyberBackground() {
-    val transition = rememberInfiniteTransition(label = "background")
-    val drift by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 34f,
+    val transition = rememberInfiniteTransition(label = "tk_background")
+    val driftX by transition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "gridDrift"
-    )
-    val pulse by transition.animateFloat(
-        initialValue = 0.12f,
-        targetValue = 0.28f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
+            animation = tween(7000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "glowPulse"
+        label = "driftX"
     )
-    Canvas(Modifier.fillMaxSize()) {
-        drawRect(Color(0xFF03070C))
-        val step = 34.dp.toPx()
-        var x = -step + drift.dp.toPx()
-        while (x < size.width + step) {
-            drawLine(
-                Color(0xFF00D9C0).copy(alpha = 0.07f),
-                androidx.compose.ui.geometry.Offset(x, 0f),
-                androidx.compose.ui.geometry.Offset(x, size.height),
-                1f
-            )
-            x += step
-        }
-        var y = -step + drift.dp.toPx()
-        while (y < size.height + step) {
-            drawLine(
-                Color(0xFF00D9C0).copy(alpha = 0.07f),
-                androidx.compose.ui.geometry.Offset(0f, y),
-                androidx.compose.ui.geometry.Offset(size.width, y),
-                1f
-            )
-            y += step
-        }
-        drawCircle(
-            Color(0xFF00D9C0).copy(alpha = pulse),
-            radius = size.minDimension * 0.34f,
-            center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.18f)
+    val driftY by transition.animateFloat(
+        initialValue = -7f,
+        targetValue = 7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(9000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "driftY"
+    )
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        Image(
+            painter = painterResource(id = R.drawable.tk_background),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = driftX
+                    translationY = driftY
+                    scaleX = 1.08f
+                    scaleY = 1.08f
+                    alpha = 0.72f
+                },
+            contentScale = ContentScale.Crop
         )
-        drawCircle(
-            Color(0xFF7B5CFF).copy(alpha = pulse * 0.55f),
-            radius = size.minDimension * 0.28f,
-            center = androidx.compose.ui.geometry.Offset(size.width * 0.15f, size.height * 0.82f)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.38f))
         )
     }
 }
