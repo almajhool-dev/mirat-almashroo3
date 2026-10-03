@@ -8,6 +8,6 @@ import com.creator.tiktoktoolkit.ui.AppTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { AppTheme { AccountAnalyzer() } }
+        setContent { AppTheme { StableAccountAnalyzer() } }
     }
 }
