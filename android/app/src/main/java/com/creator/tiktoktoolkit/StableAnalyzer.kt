@@ -222,8 +222,13 @@ private fun Avatar(url: String) {
     ) {
         if (bitmap != null) {
             Image(bitmap!!.asImageBitmap(), "صورة الحساب", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        } else {
-            Image(painterResource(R.drawable.tk_sabr_logo_vector), null, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Crop)
+        } else if (url.isNotBlank()) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(28.dp),
+                color = Color(0xFF20F0D0),
+                trackColor = Color(0xFF20323A),
+                strokeWidth = 3.dp
+            )
         }
     }
 }
