@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
@@ -250,7 +251,7 @@ private fun Stat(label: String, value: Long) {
     }
 }
 
-private data class SecurityCheck(val text: String, val problem: Boolean)
+private data class StableSecurityCheck(val text: String, val problem: Boolean)
 
 private fun securityScore(p: TikTokProfile): Int {
     var score = 100
@@ -262,9 +263,9 @@ private fun securityScore(p: TikTokProfile): Int {
     return score.coerceIn(0, 100)
 }
 
-private fun securityChecks(p: TikTokProfile): List<SecurityCheck> {
+private fun securityChecks(p: TikTokProfile): List<StableSecurityCheck> {
     val checks = mutableListOf<SecurityCheck>()
-    if (p.videos == 0L) checks += SecurityCheck("لا توجد منشورات عامة حالياً", true)
+    if (p.videos == 0L) checks += StableSecurityCheck("لا توجد منشورات عامة حالياً", true)
     if (p.bio.isBlank()) checks += SecurityCheck("النبذة التعريفية فارغة", true)
     if (p.avatarUrl.isBlank()) checks += SecurityCheck("صورة الحساب غير متاحة", true)
     if (p.following > p.followers && p.following > 50L) checks += SecurityCheck("عدد المتابَعين أكبر من عدد المتابعين", true)
