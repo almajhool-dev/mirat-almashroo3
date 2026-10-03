@@ -1,97 +1,176 @@
 package com.creator.tiktoktoolkit
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import org.json.JSONObject
+import java.util.Locale
 
 data class TikTokProfile(
-    val username: String,
-    val displayName: String = "",
-    val followers: Long = 0,
-    val following: Long = 0,
-    val likes: Long = 0,
-    val videos: Long = 0,
-    val verified: Boolean = false
+    val username: String, val displayName: String, val bio: String,
+    val avatarUrl: String, val profileUrl: String, val followers: Long,
+    val following: Long, val likes: Long, val videos: Long, val verified: Boolean
 )
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun AccountAnalyzer() {
     var username by remember { mutableStateOf("") }
+    var requestKey by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var profile by remember { mutableStateOf<TikTokProfile?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-    LazyColumn(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item {
-            Text("تحليل حساب TikTok", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("اكتب اليوزر بدون @ للحصول على الإحصائيات الظاهرة علناً.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("TikTok Account Analyzer", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+            Text("حلّل حساب TikTok عام بواسطة اليوزر", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it.replace("@", "").trim() },
+                label = { Text("اسم المستخدم") },
+                placeholder = { Text("مثال: username") },
+                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            )
+            Button(
+                onClick = { profile = null; error = ""; loading = true; requestKey++ },
+                enabled = username.isNotBlank() && !loading,
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
+            ) { Text(if (loading) "جاري جلب البيانات..." else "تحليل الحساب") }
         }
-        item {
-            OutlinedTextField(username, { username = it.removePrefix("@").trim() }, label = { Text("اسم المستخدم") }, placeholder = { Text("مثال: username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        }
-        item {
-            Button({ loading = true; error = ""; profile = null }, enabled = username.isNotBlank() && !loading, modifier = Modifier.fillMaxWidth()) {
-                Text(if (loading) "جاري التحليل..." else "تحليل الحساب")
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            profile?.let { p ->
+                ProfileCard(p)
+                StatsCard(p)
+                Button(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(p.profileUrl))) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)
+                ) { Text("فتح البروفايل في TikTok") }
             }
-        }
-        if (error.isNotBlank()) item { Text(error, color = MaterialTheme.colorScheme.error) }
-        profile?.let { p ->
-            item {
-                Card {
-                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("@${p.username}", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                        if (p.displayName.isNotBlank()) Text(p.displayName)
-                        if (p.verified) Text("✓ حساب موثّق", color = MaterialTheme.colorScheme.primary)
-                        HorizontalDivider()
-                        StatLine("المتابعون", p.followers)
-                        StatLine("المتابَعون", p.following)
-                        StatLine("الإعجابات", p.likes)
-                        StatLine("الفيديوهات", p.videos)
-                    }
+            if (error.isNotBlank()) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(16.dp)) {
+                    Text(error, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
+            Text(
+                "المحلّل يقرأ البيانات العامة التي يرسلها TikTok لصفحة الحساب. الحساب الخاص أو تغييرات TikTok أو الحظر المؤقت قد تمنع ظهور بعض البيانات.",
+                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        item { Text("ملاحظة: البيانات تُقرأ من صفحة الحساب العامة في TikTok. إذا طلب TikTok تسجيل دخول أو غيّر بنية الصفحة، قد لا تتوفر الأرقام.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item {
-            AccountWebReader(username, loading) { result ->
-                loading = false
-                if (result != null && (result.followers > 0 || result.following > 0 || result.likes > 0 || result.videos > 0)) profile = result
-                else error = "لم أتمكن من قراءة الإحصائيات لهذا الحساب."
+        TikTokWebReader(username, requestKey) {
+            loading = false
+            if (it == null) error = "تعذر قراءة بيانات الحساب. تأكد من اليوزر وأن الحساب عام."
+            else profile = it
+        }
+    }
+}
+
+@Composable
+private fun ProfileCard(p: TikTokProfile) {
+    Card(shape = RoundedCornerShape(24.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Avatar(p.avatarUrl)
+            Text(p.displayName.ifBlank { "@" + p.username }, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+            Text("@" + p.username, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            if (p.verified) {
+                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text("✓ موثّق", Modifier.padding(horizontal = 12.dp, vertical = 5.dp), fontWeight = FontWeight.Bold)
+                }
+            }
+            if (p.bio.isNotBlank()) Text(p.bio, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun Avatar(url: String) {
+    var failed by remember(url) { mutableStateOf(false) }
+    if (url.isBlank() || failed) {
+        Box(Modifier.size(96.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Text("TT", fontWeight = FontWeight.Black, fontSize = 24.sp)
+        }
+    } else {
+        AndroidView(
+            modifier = Modifier.size(96.dp).clip(CircleShape),
+            factory = { context -> android.widget.ImageView(context).apply { scaleType = android.widget.ImageView.ScaleType.CENTER_CROP } },
+            update = { view ->
+                Thread {
+                    try {
+                        val c = java.net.URL(url).openConnection()
+                        c.connectTimeout = 8000; c.readTimeout = 8000
+                        c.getInputStream().use { stream ->
+                            val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
+                            view.post { view.setImageBitmap(bitmap) }
+                        }
+                    } catch (_: Exception) { view.post { failed = true } }
+                }.start()
+            }
+        )
+    }
+}
+
+@Composable
+private fun StatsCard(p: TikTokProfile) {
+    Card(shape = RoundedCornerShape(22.dp)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("إحصائيات الحساب", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Stat("المتابعون", p.followers); Stat("المتابَعون", p.following)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Stat("الإعجابات", p.likes); Stat("الفيديوهات", p.videos)
             }
         }
     }
 }
 
 @Composable
-private fun StatLine(label: String, value: Long) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label); Text(formatCount(value), fontWeight = FontWeight.Bold)
+private fun Stat(label: String, value: Long) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(formatCount(value), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 private fun formatCount(value: Long): String = when {
-    value >= 1_000_000_000 -> "%.1fB".format(value / 1_000_000_000.0)
-    value >= 1_000_000 -> "%.1fM".format(value / 1_000_000.0)
-    value >= 1_000 -> "%.1fK".format(value / 1_000.0)
+    value >= 1_000_000_000 -> String.format(Locale.US, "%.1fB", value / 1_000_000_000.0)
+    value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000.0)
+    value >= 1_000 -> String.format(Locale.US, "%.1fK", value / 1_000.0)
     else -> value.toString()
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun AccountWebReader(username: String, start: Boolean, onResult: (TikTokProfile?) -> Unit) {
+private fun TikTokWebReader(username: String, requestKey: Int, onResult: (TikTokProfile?) -> Unit) {
     val callback by rememberUpdatedState(onResult)
     AndroidView(
         modifier = Modifier.size(1.dp),
@@ -100,28 +179,65 @@ private fun AccountWebReader(username: String, start: Boolean, onResult: (TikTok
                 layoutParams = ViewGroup.LayoutParams(1, 1)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36"
                 webChromeClient = WebChromeClient()
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
-                        if (start && username.isNotBlank()) evaluateJavascript(
-                            """(function(){
-                                var h=document.documentElement.innerHTML;
-                                function pick(k){var r=new RegExp('["\\']'+k+'["\\']\\s*:\\s*["\\']?([0-9]+)["\\']?','i').exec(h);return r?r[1]:"0";}
-                                var n=(/"nickname"\\s*:\\s*"([^"]+)"/i.exec(h)||[])[1]||"";
-                                var v=/"verified"\\s*:\\s*(true|false)/i.exec(h);
-                                return JSON.stringify({username:"$username",displayName:n,followers:pick("followerCount"),following:pick("followingCount"),likes:pick("heartCount"),videos:pick("videoCount"),verified:v?v[1]==="true":false});
-                            })();"""
-                        ) { raw ->
+                        if (requestKey <= 0 || username.isBlank()) return
+                        val js = """
+                            (function(){
+                              try {
+                                var el=document.getElementById('__UNIVERSAL_DATA_FOR_REHYDRATION__');
+                                if(!el) return JSON.stringify({error:'no_data'});
+                                var root=JSON.parse(el.textContent), found=null;
+                                function walk(o){
+                                  if(found||o===null||typeof o!=='object') return;
+                                  if(o.userInfo && (o.userInfo.stats || o.userInfo.user)){found=o.userInfo;return;}
+                                  if(Array.isArray(o)){for(var i=0;i<o.length&&!found;i++)walk(o[i]);}
+                                  else {for(var k in o){if(Object.prototype.hasOwnProperty.call(o,k))walk(o[k]);}}
+                                }
+                                walk(root);
+                                if(!found) return JSON.stringify({error:'profile_not_found'});
+                                var u=found.user||{}, s=found.stats||{};
+                                return JSON.stringify({
+                                  username:u.uniqueId||'""" + username + """',
+                                  displayName:u.nickname||'', bio:u.signature||'',
+                                  avatarUrl:u.avatarLarger||u.avatarMedium||u.avatarThumb||'',
+                                  profileUrl:'https://www.tiktok.com/@'+(u.uniqueId||'""" + username + """'),
+                                  followers:Number(s.followerCount||0), following:Number(s.followingCount||0),
+                                  likes:Number(s.heartCount||0), videos:Number(s.videoCount||0),
+                                  verified:Boolean(u.verified)
+                                });
+                              } catch(e){return JSON.stringify({error:String(e)});}
+                            })();
+                        """.trimIndent()
+                        view?.evaluateJavascript(js) { raw ->
                             try {
-                                val json = JSONObject(raw.trim('"').replace("\\", ""))
-                                callback(TikTokProfile(json.optString("username", username), json.optString("displayName"), json.optLong("followers"), json.optLong("following"), json.optLong("likes"), json.optLong("videos"), json.optBoolean("verified")))
+                                val clean = raw.trim().removePrefix(""").removeSuffix(""").replace("\"", """).replace("\\", "\")
+                                val json = JSONObject(clean)
+                                if (json.has("error")) callback(null)
+                                else callback(TikTokProfile(
+                                    json.optString("username", username),
+                                    json.optString("displayName"),
+                                    json.optString("bio"),
+                                    json.optString("avatarUrl"),
+                                    json.optString("profileUrl", "https://www.tiktok.com/@" + username),
+                                    json.optLong("followers"), json.optLong("following"),
+                                    json.optLong("likes"), json.optLong("videos"),
+                                    json.optBoolean("verified")
+                                ))
                             } catch (_: Exception) { callback(null) }
                         }
                     }
                 }
             }
         },
-        update = { web -> if (start && username.isNotBlank()) web.loadUrl("https://www.tiktok.com/@$username") }
+        update = { web ->
+            if (requestKey > 0 && username.isNotBlank()) {
+                web.stopLoading()
+                web.loadUrl("https://www.tiktok.com/@" + username)
+            }
+        }
     )
 }
