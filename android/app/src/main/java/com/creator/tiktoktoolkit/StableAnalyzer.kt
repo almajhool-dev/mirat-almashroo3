@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -44,7 +45,7 @@ import java.net.URL
 import java.util.Locale
 
 @Composable
-fun StableAccountAnalyzer() {
+fun StableAccountAnalyzer(config: PublicConfig = PublicConfig(), onOwner: () -> Unit = {}, onNotifications: () -> Unit = {}) {
     var username by remember { mutableStateOf("") }
     var requestKey by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -60,6 +61,10 @@ fun StableAccountAnalyzer() {
     var settings by remember { mutableStateOf(false) }
     var pickLogo by remember { mutableStateOf(false) }
     var imageError by remember { mutableStateOf("") }
+    LaunchedEffect(config) {
+        theme = config.theme; motion = config.motion
+        background = config.background; logo = config.logo
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
@@ -106,13 +111,15 @@ fun StableAccountAnalyzer() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TextButton(onClick = { settings = true }) { Text("⚙ إعدادات المظهر", color = Color.White) }
+            TextButton(onClick = onNotifications) { Text("تفعيل إشعارات التطبيق") }
             Box(Modifier.size(124.dp).clip(CircleShape).border(2.dp, Color(0xFF20F0D0), CircleShape)) {
                 val customLogo = localAppearanceBitmap(logo)
                 if (customLogo != null) Image(customLogo.asImageBitmap(), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else Image(painterResource(R.drawable.tk_sabr_logo_vector), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
-            Text("TK_SABR", color = Color(0xFF22E6D0), fontSize = 31.sp, fontWeight = FontWeight.Black)
-            Text("محلّل حسابات تيك توك", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(config.title, modifier = Modifier.combinedClickable(onClick = {}, onLongClick = onOwner), color = Color(0xFF22E6D0), fontSize = 31.sp, fontWeight = FontWeight.Black)
+            Text(config.subtitle, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            if (config.announcement.isNotBlank()) Text(config.announcement, color = Color.White)
             Text("اكتب اسم المستخدم لفحص بيانات الحساب العامة", color = Color(0xFFDCE7EA), fontSize = 14.sp)
 
             OutlinedTextField(
@@ -174,7 +181,7 @@ fun StableAccountAnalyzer() {
             }
 
             Text("يعتمد الفحص على بيانات TikTok العامة فقط. الحساب الخاص أو تقييد TikTok قد يمنع ظهور بعض النتائج.", fontSize = 12.sp, color = Color(0xFFB5C7D0))
-            Text("تصميم وبرمجة: المجهول", fontSize = 13.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.Bold)
+            Text(config.footer, fontSize = 13.sp, color = Color(0xFF37F4D3), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -438,6 +445,11 @@ private fun localAppearanceBitmap(uri: String): Bitmap? {
         value = null
         if (uri.isNotBlank()) value = withContext(Dispatchers.IO) {
             runCatching {
+                val bytes = when {
+                    uri.startsWith("data:image/jpeg;base64,") -> android.util.Base64.decode(uri.substringAfter(','), android.util.Base64.DEFAULT)
+                    else -> null
+                }
+                if (bytes != null) return@runCatching BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 val parsed = Uri.parse(uri)
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -498,3 +510,4 @@ private fun CyberBackground(theme: Int, motion: Boolean, uri: String) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (bitmap != null) .6f else .15f)))
     }
 }
+

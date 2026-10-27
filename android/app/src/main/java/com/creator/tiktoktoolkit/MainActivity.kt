@@ -12,7 +12,7 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 // Public analysis does not require a Google account.
                 // Do not expose owner-only controls without authentication.
-                StableAccountAnalyzer()
+                CloudControlledApp()
             }
         }
     }
