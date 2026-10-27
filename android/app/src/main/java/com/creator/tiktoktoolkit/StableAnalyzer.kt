@@ -1,6 +1,12 @@
 package com.creator.tiktoktoolkit
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.geometry.Offset
+import kotlin.math.sin
+import kotlin.math.cos
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -46,16 +52,64 @@ fun StableAccountAnalyzer() {
     var error by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    val prefs = remember { context.getSharedPreferences("appearance", 0) }
+    var theme by remember { mutableIntStateOf(prefs.getInt("theme", 0).coerceIn(0, 2)) }
+    var motion by remember { mutableStateOf(prefs.getBoolean("motion", true)) }
+    var background by remember { mutableStateOf(prefs.getString("background", "") ?: "") }
+    var logo by remember { mutableStateOf(prefs.getString("logo", "") ?: "") }
+    var settings by remember { mutableStateOf(false) }
+    var pickLogo by remember { mutableStateOf(false) }
+    var imageError by remember { mutableStateOf("") }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val key = if (pickLogo) "logo" else "background"
+                prefs.edit().putString(key, uri.toString()).apply()
+                if (pickLogo) logo = uri.toString() else background = uri.toString()
+            }.onFailure { imageError = "تعذر حفظ الصورة، اختار صورة ثانية" }
+        }
+    }
+    if (settings) AlertDialog(
+        onDismissRequest = { settings = false },
+        title = { Text("إعدادات المظهر") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                listOf("خوارزميات الأمن السيبراني", "شبكة التشفير", "مدارات الحماية").forEachIndexed { index, name ->
+                    TextButton(onClick = { theme = index; prefs.edit().putInt("theme", index).apply() }) {
+                        Text((if (theme == index) "✓ " else "") + name)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("تشغيل الحركة", Modifier.weight(1f))
+                    Switch(motion, { motion = it; prefs.edit().putBoolean("motion", it).apply() })
+                }
+                Text("إضافة سمة خاصة: اختار صورة، والحركة تظهر فوقها.")
+                TextButton(onClick = { pickLogo = false; picker.launch(arrayOf("image/*")) }) { Text("إضافة خلفية من جهازي") }
+                TextButton(onClick = { pickLogo = true; picker.launch(arrayOf("image/*")) }) { Text("تغيير الشعار داخل التطبيق") }
+                Text("هذا يغيّر الشعار الداخلي، مو أيقونة شاشة الهاتف.")
+                TextButton(onClick = {
+                    background = ""; logo = ""
+                    prefs.edit().remove("background").remove("logo").apply()
+                }) { Text("استرجاع الصور الأصلية") }
+                if (imageError.isNotBlank()) Text(imageError)
+            }
+        },
+        confirmButton = { TextButton(onClick = { settings = false }) { Text("تم") } }
+    )
     Box(Modifier.fillMaxSize()) {
-        StableAnimatedBackground()
+        CyberBackground(theme, motion, background)
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
                 .padding(horizontal = 20.dp).padding(top = 18.dp, bottom = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            TextButton(onClick = { settings = true }) { Text("⚙ إعدادات المظهر", color = Color.White) }
             Box(Modifier.size(124.dp).clip(CircleShape).border(2.dp, Color(0xFF20F0D0), CircleShape)) {
-                Image(painterResource(R.drawable.tk_sabr_logo_vector), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                val customLogo = localAppearanceBitmap(logo)
+                if (customLogo != null) Image(customLogo.asImageBitmap(), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Image(painterResource(R.drawable.tk_sabr_logo_vector), "TK_SABR", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
             Text("TK_SABR", color = Color(0xFF22E6D0), fontSize = 31.sp, fontWeight = FontWeight.Black)
             Text("محلّل حسابات تيك توك", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
@@ -374,4 +428,73 @@ private fun findStableUserInfo(value: Any?, depth: Int): JSONObject? {
         for (i in 0 until value.length()) findStableUserInfo(value.opt(i), depth + 1)?.let { return it }
     }
     return null
+}
+
+
+@Composable
+private fun localAppearanceBitmap(uri: String): Bitmap? {
+    val context = LocalContext.current
+    val bitmap by produceState<Bitmap?>(null, uri) {
+        value = null
+        if (uri.isNotBlank()) value = withContext(Dispatchers.IO) {
+            runCatching {
+                val parsed = Uri.parse(uri)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(parsed)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                var sample = 1
+                while (bounds.outWidth / sample > 1600 || bounds.outHeight / sample > 1600) sample *= 2
+                context.contentResolver.openInputStream(parsed)?.use {
+                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+                }
+            }.getOrNull()
+        }
+    }
+    return bitmap
+}
+
+@Composable
+private fun CyberBackground(theme: Int, motion: Boolean, uri: String) {
+    var phase by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(motion) {
+        if (motion) {
+            var start = 0L
+            while (true) withFrameNanos { now ->
+                if (start == 0L) start = now
+                phase = ((now - start) % 24000000000L) / 24000000000f
+            }
+        }
+    }
+    val bitmap = localAppearanceBitmap(uri)
+    val accent = listOf(Color(0xFF20F0D0), Color(0xFF7799FF), Color(0xFFFF73BB))[theme]
+    Box(Modifier.fillMaxSize().background(Color(0xFF030A14))) {
+        if (bitmap != null) Image(bitmap.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Canvas(Modifier.fillMaxSize()) {
+            val step = 48.dp.toPx()
+            if (theme == 0) {
+                for (column in 0..(size.width / step).toInt()) {
+                    val shift = (phase * size.height + column * step * 3) % size.height
+                    for (row in 0..7) {
+                        val y = (shift + row * step) % size.height
+                        drawLine(accent.copy(alpha = .16f), Offset(column * step, y), Offset(column * step, y + step * .45f), 2f)
+                    }
+                }
+            } else if (theme == 1) {
+                for (i in 0..12) {
+                    val y = (i * size.height / 12 + phase * step) % size.height
+                    drawLine(accent.copy(alpha = .18f), Offset(0f, y), Offset(size.width, y), 1f)
+                    val x = size.width * (.5f + .4f * sin(i + phase * 6.283f))
+                    drawCircle(accent.copy(alpha = .5f), 4.dp.toPx(), Offset(x, y))
+                }
+            } else {
+                for (i in 1..5) {
+                    val radius = size.width * i / 8f
+                    val center = Offset(size.width / 2, size.height / 2)
+                    drawCircle(accent.copy(alpha = .14f), radius, center, style = Stroke(1.dp.toPx()))
+                    val angle = phase * 6.283f + i
+                    drawCircle(accent.copy(alpha = .6f), 4.dp.toPx(), center + Offset(cos(angle) * radius, sin(angle) * radius))
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (bitmap != null) .6f else .15f)))
+    }
 }
